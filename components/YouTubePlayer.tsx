@@ -72,8 +72,26 @@ const YouTubePlayerComponent: React.FC<YouTubePlayerProps> = ({
   useEffect(() => {
     if (webViewRef.current && videoInfo) {
       const action = isPlaying ? 'play' : 'pause';
+      console.log('YouTube player sending play/pause command:', action, 'for video:', videoInfo.videoId);
       webViewRef.current.postMessage(JSON.stringify({ action }));
       setInternalIsPlaying(isPlaying);
+      
+      // If pausing, send multiple pause commands to ensure it stops
+      if (!isPlaying) {
+        setTimeout(() => {
+          if (webViewRef.current) {
+            console.log('YouTube player sending additional pause command');
+            webViewRef.current.postMessage(JSON.stringify({ action: 'pause' }));
+          }
+        }, 100);
+        
+        setTimeout(() => {
+          if (webViewRef.current) {
+            console.log('YouTube player sending final pause command');
+            webViewRef.current.postMessage(JSON.stringify({ action: 'pause' }));
+          }
+        }, 200);
+      }
     }
   }, [isPlaying, videoInfo]);
 
@@ -91,7 +109,14 @@ const YouTubePlayerComponent: React.FC<YouTubePlayerProps> = ({
     const webView = webViewRef.current;
     return () => {
       if (webView) {
+        console.log('YouTube player unmounting, sending pause commands');
         webView.postMessage(JSON.stringify({ action: 'pause' }));
+        // Send multiple pause commands to ensure audio stops
+        setTimeout(() => {
+          if (webView) {
+            webView.postMessage(JSON.stringify({ action: 'pause' }));
+          }
+        }, 50);
       }
     };
   }, []);

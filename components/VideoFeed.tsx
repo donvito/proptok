@@ -48,25 +48,26 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
 
-  // Helper function to pause current video before switching
-  const pauseCurrentVideo = useCallback(() => {
-    if (isYouTubeUrl(properties[currentIndex]?.videoUrl)) {
-      // For YouTube videos, set playing state to false immediately
-      setYoutubePlayingStates(prev => ({
-        ...prev,
-        [currentIndex]: false
-      }));
-      // Also try to pause directly if possible
-      setIsPlaying(false);
-    } else {
-      // For regular videos, pause directly
-      const currentVideo = videoRefs.current[currentIndex];
-      if (currentVideo) {
-        currentVideo.pauseAsync();
+
+  // Helper function to pause ALL videos (more aggressive approach)
+  const pauseAllVideos = useCallback(() => {
+    console.log('Pausing all videos');
+    
+    // Pause all regular videos
+    videoRefs.current.forEach((video, index) => {
+      if (video) {
+        try {
+          video.pauseAsync();
+        } catch (error) {
+          console.log(`Error pausing video at index ${index}:`, error);
+        }
       }
-      setIsPlaying(false);
-    }
-  }, [properties, currentIndex]);
+    });
+
+    // Reset all YouTube playing states
+    setYoutubePlayingStates({});
+    setIsPlaying(false);
+  }, []);
 
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_, gestureState) => {
@@ -83,31 +84,31 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
       
       if (gestureState.dy > threshold && currentIndex > 0) {
         // Swipe down - previous video
-        pauseCurrentVideo(); // Pause current video first
+        pauseAllVideos(); // Use more aggressive pause approach
         Animated.timing(translateY, {
           toValue: SCREEN_HEIGHT,
           duration: 300,
           useNativeDriver: true,
         }).start(() => {
-          // Small delay to ensure pause command is processed
+          // Longer delay to ensure all audio stops
           setTimeout(() => {
             setCurrentIndex(currentIndex - 1);
             translateY.setValue(0);
-          }, 50);
+          }, 100);
         });
       } else if (gestureState.dy < -threshold && currentIndex < properties.length - 1) {
         // Swipe up - next video
-        pauseCurrentVideo(); // Pause current video first
+        pauseAllVideos(); // Use more aggressive pause approach
         Animated.timing(translateY, {
           toValue: -SCREEN_HEIGHT,
           duration: 300,
           useNativeDriver: true,
         }).start(() => {
-          // Small delay to ensure pause command is processed
+          // Longer delay to ensure all audio stops
           setTimeout(() => {
             setCurrentIndex(currentIndex + 1);
             translateY.setValue(0);
-          }, 50);
+          }, 100);
         });
       } else {
         // Snap back
@@ -120,13 +121,21 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
   });
 
   useEffect(() => {
-    // Handle video playback for current index
+    console.log('Current index changed to:', currentIndex);
+    
+    // Aggressively handle video playback for current index
     videoRefs.current.forEach((ref, index) => {
       if (ref && !isYouTubeUrl(properties[index]?.videoUrl)) {
-        if (index === currentIndex) {
-          ref.playAsync();
-        } else {
-          ref.pauseAsync();
+        try {
+          if (index === currentIndex) {
+            ref.playAsync();
+          } else {
+            ref.pauseAsync();
+            // Also reset position to ensure audio stops completely
+            ref.setPositionAsync(0);
+          }
+        } catch (error) {
+          console.log(`Error handling video at index ${index}:`, error);
         }
       }
     });
@@ -143,6 +152,14 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
     // Reset isPlaying to true when switching videos for auto-play
     setIsPlaying(true);
   }, [currentIndex, properties]);
+
+  // Cleanup effect to stop all videos when component unmounts
+  useEffect(() => {
+    return () => {
+      console.log('VideoFeed unmounting, stopping all videos');
+      pauseAllVideos();
+    };
+  }, [pauseAllVideos]);
 
   // Initialize muted states for YouTube videos
   useEffect(() => {
