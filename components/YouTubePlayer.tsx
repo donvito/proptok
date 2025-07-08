@@ -1,0 +1,213 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
+import { WebView } from 'react-native-webview';
+import { Ionicons } from '@expo/vector-icons';
+import { getYouTubeVideoInfo, getYouTubeEmbedHtml } from '../utils/youtube';
+
+
+interface YouTubePlayerProps {
+  url: string;
+  isPlaying: boolean;
+  muted?: boolean;
+  shouldAutoPlay?: boolean;
+  onLoad?: () => void;
+  onError?: (error: any) => void;
+  onMuteToggle?: () => void;
+  style?: any;
+}
+
+export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
+  url,
+  isPlaying,
+  muted = false,
+  shouldAutoPlay = false,
+  onLoad,
+  onError,
+  onMuteToggle,
+  style,
+}) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [videoInfo, setVideoInfo] = useState<any>(null);
+  const [webViewKey, setWebViewKey] = useState(0);
+
+  useEffect(() => {
+    const info = getYouTubeVideoInfo(url);
+    if (info) {
+      setVideoInfo(info);
+      setError(false);
+    } else {
+      setError(true);
+      onError?.('Invalid YouTube URL');
+    }
+  }, [url, onError]);
+
+  useEffect(() => {
+    if (videoInfo && shouldAutoPlay !== undefined) {
+      setWebViewKey(prev => prev + 1);
+    }
+  }, [shouldAutoPlay, videoInfo, muted]);
+
+  // Handle play/pause commands via WebView messages
+  const webViewRef = useRef<any>(null);
+  
+  useEffect(() => {
+    if (webViewRef.current && videoInfo) {
+      const action = isPlaying ? 'play' : 'pause';
+      webViewRef.current.postMessage(JSON.stringify({ action }));
+    }
+  }, [isPlaying, videoInfo]);
+
+  useEffect(() => {
+    if (webViewRef.current && videoInfo) {
+      const action = muted ? 'mute' : 'unmute';
+      webViewRef.current.postMessage(JSON.stringify({ action }));
+    }
+  }, [muted, videoInfo]);
+
+  const handleWebViewLoad = () => {
+    setLoading(false);
+    onLoad?.();
+  };
+
+  const handleWebViewError = (syntheticEvent: any) => {
+    const { nativeEvent } = syntheticEvent;
+    setError(true);
+    setLoading(false);
+    onError?.(nativeEvent);
+  };
+
+  const reloadVideo = () => {
+    setError(false);
+    setLoading(true);
+    setWebViewKey(prev => prev + 1);
+  };
+
+  if (error) {
+    return (
+      <View style={[styles.container, style, styles.errorContainer]}>
+        <Ionicons name="warning-outline" size={48} color="#fff" />
+        <TouchableOpacity style={styles.reloadButton} onPress={reloadVideo}>
+          <Ionicons name="reload" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!videoInfo) {
+    return (
+      <View style={[styles.container, style, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
+
+  const htmlContent = getYouTubeEmbedHtml(videoInfo.videoId, videoInfo.isShorts, muted, shouldAutoPlay);
+
+  return (
+    <View style={[styles.container, style]}>
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      )}
+      
+      {/* Audio Toggle Button */}
+      {onMuteToggle && (
+        <TouchableOpacity style={styles.audioButton} onPress={onMuteToggle}>
+          <Ionicons
+            name={muted ? 'volume-mute' : 'volume-high'}
+            size={24}
+            color="#fff"
+          />
+        </TouchableOpacity>
+      )}
+      
+      <WebView
+        ref={webViewRef}
+        key={webViewKey}
+        source={{ html: htmlContent }}
+        style={styles.webView}
+        onLoad={handleWebViewLoad}
+        onError={handleWebViewError}
+        onMessage={(event) => {
+          // Handle messages from YouTube player if needed
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            console.log('YouTube player message:', data);
+          } catch {
+            // Ignore non-JSON messages
+          }
+        }}
+        allowsInlineMediaPlayback={true}
+        mediaPlaybackRequiresUserAction={false}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        startInLoadingState={true}
+        scalesPageToFit={false}
+        scrollEnabled={false}
+        bounces={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        overScrollMode="never"
+        contentMode="mobile"
+        mixedContentMode="always"
+        thirdPartyCookiesEnabled={true}
+        sharedCookiesEnabled={true}
+        allowsFullscreenVideo={false}
+        cacheEnabled={true}
+        userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  webView: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    zIndex: 1,
+  },
+  errorContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reloadButton: {
+    marginTop: 20,
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 25,
+  },
+  audioButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 25,
+    padding: 12,
+    zIndex: 2,
+  },
+});

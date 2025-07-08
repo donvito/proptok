@@ -1,110 +1,266 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  SafeAreaView,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import { PropertyFilters } from '@/components/PropertyFilters';
+import { mockProperties } from '@/data/mockProperties';
+import { Property, PropertyFilter } from '@/types/Property';
 
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+export default function SearchScreen() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredProperties, setFilteredProperties] = useState<Property[]>(mockProperties);
+  const [showFilters, setShowFilters] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<PropertyFilter>({});
 
-export default function TabTwoScreen() {
+  const filterProperties = React.useCallback(() => {
+    let filtered = mockProperties;
+
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(property => 
+        property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        property.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        property.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        property.state.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (activeFilters.priceMin !== undefined) {
+      filtered = filtered.filter(property => property.price >= activeFilters.priceMin!);
+    }
+    if (activeFilters.priceMax !== undefined) {
+      filtered = filtered.filter(property => property.price <= activeFilters.priceMax!);
+    }
+    if (activeFilters.bedrooms !== undefined) {
+      filtered = filtered.filter(property => property.bedrooms >= activeFilters.bedrooms!);
+    }
+    if (activeFilters.bathrooms !== undefined) {
+      filtered = filtered.filter(property => property.bathrooms >= activeFilters.bathrooms!);
+    }
+    if (activeFilters.propertyType) {
+      filtered = filtered.filter(property => property.propertyType === activeFilters.propertyType);
+    }
+    if (activeFilters.listingType) {
+      filtered = filtered.filter(property => property.listingType === activeFilters.listingType);
+    }
+
+    setFilteredProperties(filtered);
+  }, [searchQuery, activeFilters]);
+
+  useEffect(() => {
+    filterProperties();
+  }, [filterProperties]);
+
+
+  const handleApplyFilters = (filters: PropertyFilter) => {
+    setActiveFilters(filters);
+  };
+
+  const formatPrice = (price: number, listingType: string) => {
+    if (listingType === 'rent') {
+      return `$${price.toLocaleString()}/mo`;
+    }
+    return `$${price.toLocaleString()}`;
+  };
+
+  const renderPropertyItem = ({ item }: { item: Property }) => (
+    <TouchableOpacity style={styles.propertyItem}>
+      <Image source={{ uri: item.thumbnailUrl }} style={styles.propertyImage} />
+      <View style={styles.propertyDetails}>
+        <Text style={styles.propertyTitle}>{item.title}</Text>
+        <Text style={styles.propertyPrice}>
+          {formatPrice(item.price, item.listingType)}
+        </Text>
+        <View style={styles.propertySpecs}>
+          <Text style={styles.specText}>
+            {item.bedrooms} bed • {item.bathrooms} bath • {item.squareFootage.toLocaleString()} sq ft
+          </Text>
+        </View>
+        <Text style={styles.propertyAddress}>
+          {item.address}, {item.city}, {item.state}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const getActiveFiltersCount = () => {
+    return Object.keys(activeFilters).filter(key => activeFilters[key as keyof PropertyFilter] !== undefined).length;
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
+      
+      {/* Search Header */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search properties..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+        <TouchableOpacity 
+          style={[styles.filterButton, getActiveFiltersCount() > 0 && styles.filterButtonActive]}
+          onPress={() => setShowFilters(true)}
+        >
+          <Ionicons name="options-outline" size={20} color={getActiveFiltersCount() > 0 ? '#fff' : '#666'} />
+          {getActiveFiltersCount() > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{getActiveFiltersCount()}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Results */}
+      <View style={styles.resultsContainer}>
+        <Text style={styles.resultsText}>
+          {filteredProperties.length} properties found
+        </Text>
+      </View>
+
+      {/* Properties List */}
+      <FlatList
+        data={filteredProperties}
+        renderItem={renderPropertyItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      />
+
+      {/* Filters Modal */}
+      <PropertyFilters
+        visible={showFilters}
+        onClose={() => setShowFilters(false)}
+        onApplyFilters={handleApplyFilters}
+        currentFilters={activeFilters}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
   },
-  titleContainer: {
+  searchContainer: {
     flexDirection: 'row',
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    gap: 12,
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+    color: '#000',
+  },
+  filterButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  filterButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#ff4458',
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  resultsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f9f9f9',
+  },
+  resultsText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  listContainer: {
+    paddingBottom: 20,
+  },
+  propertyItem: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  propertyImage: {
+    width: 100,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  propertyDetails: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  propertyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 4,
+  },
+  propertyPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    marginBottom: 4,
+  },
+  propertySpecs: {
+    marginBottom: 4,
+  },
+  specText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  propertyAddress: {
+    fontSize: 12,
+    color: '#999',
   },
 });
