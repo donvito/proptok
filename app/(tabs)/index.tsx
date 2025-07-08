@@ -1,23 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { VideoFeed } from '@/components/VideoFeed';
+import { PropertyFilters } from '@/components/PropertyFilters';
 import { mockProperties } from '@/data/mockProperties';
-import { Property } from '@/types/Property';
+import { Property, PropertyFilter } from '@/types/Property';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function HomeScreen() {
-  const [properties, setProperties] = useState<Property[]>(mockProperties);
+  const [allProperties] = useState<Property[]>(mockProperties);
+  const [filteredProperties, setFilteredProperties] = useState<Property[]>(mockProperties);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<PropertyFilter>({});
+
+  // Filter properties based on search and filters
+  useEffect(() => {
+    let filtered = allProperties;
+
+    // Apply search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(property => 
+        property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        property.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        property.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        property.state.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply filters
+    if (activeFilters.priceMin !== undefined) {
+      filtered = filtered.filter(property => property.price >= activeFilters.priceMin!);
+    }
+    if (activeFilters.priceMax !== undefined) {
+      filtered = filtered.filter(property => property.price <= activeFilters.priceMax!);
+    }
+    if (activeFilters.bedrooms !== undefined) {
+      filtered = filtered.filter(property => property.bedrooms >= activeFilters.bedrooms!);
+    }
+    if (activeFilters.bathrooms !== undefined) {
+      filtered = filtered.filter(property => property.bathrooms >= activeFilters.bathrooms!);
+    }
+    if (activeFilters.propertyType) {
+      filtered = filtered.filter(property => property.propertyType === activeFilters.propertyType);
+    }
+    if (activeFilters.listingType) {
+      filtered = filtered.filter(property => property.listingType === activeFilters.listingType);
+    }
+
+    setFilteredProperties(filtered);
+  }, [searchQuery, activeFilters, allProperties]);
 
   const handlePropertyLike = async (propertyId: string) => {
     try {
-      const updatedProperties = properties.map(property => {
+      const updatedProperties = filteredProperties.map(property => {
         if (property.id === propertyId) {
           return { ...property, isLiked: !property.isLiked };
         }
         return property;
       });
-      setProperties(updatedProperties);
+      setFilteredProperties(updatedProperties);
       
       // Save to AsyncStorage
       const likedProperties = await AsyncStorage.getItem('likedProperties');
@@ -43,13 +86,13 @@ export default function HomeScreen() {
 
   const handlePropertySave = async (propertyId: string) => {
     try {
-      const updatedProperties = properties.map(property => {
+      const updatedProperties = filteredProperties.map(property => {
         if (property.id === propertyId) {
           return { ...property, isSaved: !property.isSaved };
         }
         return property;
       });
-      setProperties(updatedProperties);
+      setFilteredProperties(updatedProperties);
       
       // Save to AsyncStorage
       const savedProperties = await AsyncStorage.getItem('savedProperties');
@@ -85,14 +128,36 @@ export default function HomeScreen() {
     );
   };
 
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleFilterPress = () => {
+    setShowFilters(true);
+  };
+
+  const handleApplyFilters = (filters: PropertyFilter) => {
+    setActiveFilters(filters);
+  };
+
   return (
     <>
       <StatusBar style="light" />
       <VideoFeed
-        properties={properties}
+        properties={filteredProperties}
+        allProperties={allProperties}
         onPropertyLike={handlePropertyLike}
         onPropertySave={handlePropertySave}
         onContactAgent={handleContactAgent}
+        onSearchChange={handleSearchChange}
+        onFilterPress={handleFilterPress}
+      />
+      
+      <PropertyFilters
+        visible={showFilters}
+        onClose={() => setShowFilters(false)}
+        onApplyFilters={handleApplyFilters}
+        currentFilters={activeFilters}
       />
     </>
   );

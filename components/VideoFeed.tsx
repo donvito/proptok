@@ -12,22 +12,29 @@ import { Video, ResizeMode } from 'expo-av';
 import { Property } from '../types/Property';
 import { PropertyOverlay } from './PropertyOverlay';
 import { YouTubePlayer } from './YouTubePlayer';
+import { SearchHeader } from './SearchHeader';
 import { isYouTubeUrl } from '../utils/youtube';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface VideoFeedProps {
   properties: Property[];
+  allProperties?: Property[];
   onPropertyLike?: (propertyId: string) => void;
   onPropertySave?: (propertyId: string) => void;
   onContactAgent?: (property: Property) => void;
+  onSearchChange?: (query: string) => void;
+  onFilterPress?: () => void;
 }
 
 export const VideoFeed: React.FC<VideoFeedProps> = ({
   properties,
+  allProperties,
   onPropertyLike,
   onPropertySave,
   onContactAgent,
+  onSearchChange,
+  onFilterPress,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -154,6 +161,13 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
 
   return (
     <View style={styles.container}>
+      <SearchHeader 
+        onSearchChange={onSearchChange}
+        onFilterPress={onFilterPress}
+        placeholder="Search properties..."
+        showFilterButton={true}
+      />
+      
       <Animated.View
         style={[
           styles.videoContainer,
