@@ -127,7 +127,7 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
         }}>
           <Ionicons
             name={isMuted ? 'volume-mute' : 'volume-high'}
-            size={32}
+            size={28}
             color="#fff"
           />
           <Text style={styles.actionButtonText}>
@@ -138,7 +138,7 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
         <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
           <Ionicons
             name={isLiked ? 'heart' : 'heart-outline'}
-            size={32}
+            size={28}
             color={isLiked ? '#ff4458' : '#fff'}
           />
           <Text style={styles.actionButtonText}>
@@ -149,7 +149,7 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
         <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
           <Ionicons
             name={isSaved ? 'bookmark' : 'bookmark-outline'}
-            size={32}
+            size={28}
             color={isSaved ? '#ffd700' : '#fff'}
           />
           <Text style={styles.actionButtonText}>
@@ -568,20 +568,20 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const styles = StyleSheet.create({
   actionButtons: {
     position: 'absolute',
-    right: 15, // Back to right edge since sound button is now here
-    bottom: 110, // Position at bottom right, above tab bar
+    right: 10, // Closer to right edge
+    bottom: 95, // Lower in bottom right corner
     alignItems: 'center',
     zIndex: 10, // Higher than video controls to ensure buttons are clickable
   },
   actionButton: {
     alignItems: 'center',
-    marginBottom: 12, // Reduced spacing between buttons
-    padding: 8, // Reduced padding for more compact feel
+    marginBottom: 8, // Tighter spacing between buttons
+    padding: 6, // Smaller padding for more compact buttons
   },
   actionButtonText: {
     color: '#fff',
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 10,
+    marginTop: 2,
     fontWeight: '500',
   },
   propertyInfo: {

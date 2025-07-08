@@ -6,8 +6,10 @@ import {
   PanResponder,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Property } from '../types/Property';
 import { isYouTubeUrl } from '../utils/youtube';
 import { PropertyOverlay } from './PropertyOverlay';
@@ -252,8 +254,29 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
 
   if (properties.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No properties available</Text>
+      <View style={styles.container}>
+        <SearchHeader 
+          onSearchChange={onSearchChange}
+          onFilterPress={onFilterPress}
+          placeholder="Search properties..."
+          showFilterButton={true}
+        />
+        <View style={styles.emptyContainer}>
+          <Ionicons name="search-outline" size={64} color="#666" />
+          <Text style={styles.emptyText}>No properties found</Text>
+          <Text style={styles.emptySubText}>
+            Try adjusting your search or filters
+          </Text>
+          {onSearchChange && (
+            <TouchableOpacity 
+              style={styles.clearSearchButton}
+              onPress={() => onSearchChange('')}
+            >
+              <Ionicons name="refresh-outline" size={20} color="#007AFF" />
+              <Text style={styles.clearSearchText}>Clear Search</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     );
   }
@@ -391,10 +414,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#000',
+    paddingHorizontal: 40,
   },
   emptyText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 20,
+    fontWeight: '600',
     textAlign: 'center',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  emptySubText: {
+    color: '#999',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 30,
+    lineHeight: 22,
+  },
+  clearSearchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 122, 255, 0.15)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  clearSearchText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
