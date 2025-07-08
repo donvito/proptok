@@ -9,6 +9,7 @@ import {
   Modal,
   Linking,
   Share,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Property } from '../types/Property';
@@ -182,13 +183,7 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
             </Text>
           </View>
 
-          {/* Title and description */}
-          <Text style={styles.title}>{property.title}</Text>
-          <Text style={styles.description} numberOfLines={3}>
-            {property.description}
-          </Text>
-
-          {/* Agent info */}
+          {/* Agent info - moved up for better visibility */}
           <View style={styles.agentSection}>
             <Image
               source={{ uri: property.agent.photo }}
@@ -200,19 +195,25 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
             </View>
           </View>
 
-          {/* Features */}
+          {/* Title and description - shortened for space */}
+          <Text style={styles.title}>{property.title}</Text>
+          <Text style={styles.description} numberOfLines={2}>
+            {property.description}
+          </Text>
+
+          {/* Features - simplified for smaller screens */}
           {property.features.length > 0 && (
             <View style={styles.featuresSection}>
               <Text style={styles.featuresTitle}>Features:</Text>
               <View style={styles.featuresList}>
-                {property.features.slice(0, 3).map((feature, index) => (
+                {property.features.slice(0, 2).map((feature, index) => (
                   <View key={index} style={styles.featureItem}>
                     <Text style={styles.featureText}>• {feature}</Text>
                   </View>
                 ))}
-                {property.features.length > 3 && (
+                {property.features.length > 2 && (
                   <Text style={styles.moreFeatures}>
-                    +{property.features.length - 3} more
+                    +{property.features.length - 2} more
                   </Text>
                 )}
               </View>
@@ -323,6 +324,8 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
   );
 };
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   actionButtons: {
     position: 'absolute',
@@ -347,10 +350,10 @@ const styles = StyleSheet.create({
     bottom: 90, // Add space for tab bar
     left: 0,
     right: 80,
-    maxHeight: 250,
+    maxHeight: SCREEN_HEIGHT * 0.4, // 40% of screen height for better responsiveness
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 20,
-    paddingBottom: 20,
+    padding: 15, // Reduced padding for more content space
+    paddingBottom: 15,
     zIndex: 2, // Lower than video controls but visible
     pointerEvents: 'none', // Allow taps to pass through to video controls
   },
@@ -410,6 +413,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Subtle background to make it stand out
+    padding: 10,
+    borderRadius: 8,
   },
   agentPhoto: {
     width: 40,
@@ -422,12 +428,13 @@ const styles = StyleSheet.create({
   },
   agentName: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15, // Slightly larger for better visibility
+    fontWeight: '700', // Bolder weight
   },
   agentCompany: {
     color: '#ccc',
     fontSize: 12,
+    marginTop: 2,
   },
   featuresSection: {
     marginTop: 8,
