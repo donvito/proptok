@@ -1,20 +1,19 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ResizeMode, Video } from 'expo-av';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  StyleSheet,
+  Animated,
   Dimensions,
   PanResponder,
-  Animated,
+  StyleSheet,
   Text,
-  Alert,
+  View
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
 import { Property } from '../types/Property';
+import { isYouTubeUrl } from '../utils/youtube';
 import { PropertyOverlay } from './PropertyOverlay';
-import { YouTubePlayer } from './YouTubePlayer';
 import { SearchHeader } from './SearchHeader';
 import { VideoControls } from './VideoControls';
-import { isYouTubeUrl } from '../utils/youtube';
+import { YouTubePlayer } from './YouTubePlayer';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -145,7 +144,7 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
   }, [properties, currentIndex, onContactAgent]);
 
   const handleShare = useCallback(() => {
-    Alert.alert('Share Property', 'Share functionality would be implemented here');
+    // Alert.alert('Share Property', 'Share functionality would be implemented here');
   }, []);
 
   const handleMuteToggle = useCallback(() => {

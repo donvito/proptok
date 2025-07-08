@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Alert } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { VideoFeed } from '@/components/VideoFeed';
 import { PropertyFilters } from '@/components/PropertyFilters';
+import { VideoFeed } from '@/components/VideoFeed';
 import { mockProperties } from '@/data/mockProperties';
 import { Property, PropertyFilter } from '@/types/Property';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
 
 export default function HomeScreen() {
   const [allProperties] = useState<Property[]>(mockProperties);
@@ -117,15 +116,15 @@ export default function HomeScreen() {
   };
 
   const handleContactAgent = (property: Property) => {
-    Alert.alert(
-      'Contact Agent',
-      `Contact ${property.agent.name} at ${property.agent.company}?`,
-      [
-        { text: 'Call', onPress: () => Alert.alert('Calling', property.agent.phone) },
-        { text: 'Email', onPress: () => Alert.alert('Email', property.agent.email) },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+    // Alert.alert(
+    //   'Contact Agent',
+    //   `Contact ${property.agent.name} at ${property.agent.company}?`,
+    //   [
+    //     { text: 'Call', onPress: () => Alert.alert('Calling', property.agent.phone) },
+    //     { text: 'Email', onPress: () => Alert.alert('Email', property.agent.email) },
+    //     { text: 'Cancel', style: 'cancel' },
+    //   ]
+    // );
   };
 
   const handleSearchChange = (query: string) => {

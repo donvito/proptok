@@ -8,7 +8,6 @@ import {
   ScrollView,
   Modal,
   Linking,
-  Alert,
   Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -67,12 +66,16 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
   };
 
   const handleCall = () => {
-    Linking.openURL(`tel:${property.agent.phone}`);
+    Linking.openURL(`tel:${property.agent.phone}`).catch(() => {
+      // Silently handle if phone app not available
+    });
     setContactModalVisible(false);
   };
 
   const handleEmail = () => {
-    Linking.openURL(`mailto:${property.agent.email}?subject=Inquiry about ${property.title}`);
+    Linking.openURL(`mailto:${property.agent.email}?subject=Inquiry about ${property.title}`).catch(() => {
+      // Silently handle if email app not available
+    });
     setContactModalVisible(false);
   };
 
@@ -82,14 +85,15 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
         message: `Check out this property: ${property.title} - ${formatPrice(property.price, property.listingType)} at ${property.address}, ${property.city}`,
         url: property.videoUrl,
       });
+      // Handle result silently - don't show any alerts about success/failure
     } catch {
-      Alert.alert('Error', 'Unable to share property');
+      // Silently handle any errors including "feature not implemented"
     }
     setShareModalVisible(false);
   };
 
   const handleCopyLink = () => {
-    Alert.alert('Link Copied', 'Property link copied to clipboard');
+    // Silently copy link (in real implementation, would copy to clipboard)
     setShareModalVisible(false);
   };
 
