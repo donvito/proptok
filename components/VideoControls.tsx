@@ -122,14 +122,6 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Always visible sound button */}
-      <TouchableOpacity style={styles.audioButton} onPress={onMuteToggle}>
-        <Ionicons
-          name={isMuted ? 'volume-mute' : 'volume-high'}
-          size={24}
-          color="#fff"
-        />
-      </TouchableOpacity>
 
       {/* Play/Pause button for all videos */}
       <TouchableOpacity style={styles.playButton} onPress={onPlayPause}>
@@ -209,15 +201,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 1,
-  },
-  audioButton: {
-    position: 'absolute',
-    bottom: 150,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 25,
-    padding: 12,
-    zIndex: 10,
   },
   playButton: {
     position: 'absolute',

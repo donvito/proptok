@@ -155,6 +155,19 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
     });
   }, [properties]);
 
+  // Initialize muted states for regular videos
+  useEffect(() => {
+    setVideoMutedStates(prev => {
+      const newMutedStates = { ...prev };
+      properties.forEach((property, index) => {
+        if (!isYouTubeUrl(property.videoUrl) && newMutedStates[index] === undefined) {
+          newMutedStates[index] = false; // Start unmuted
+        }
+      });
+      return newMutedStates;
+    });
+  }, [properties]);
+
 
   const handleLike = useCallback(() => {
     const property = properties[currentIndex];
@@ -177,15 +190,23 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
 
   const handleMuteToggle = useCallback(() => {
     if (isYouTubeUrl(properties[currentIndex].videoUrl)) {
-      setYoutubeMutedStates(prev => ({
-        ...prev,
-        [currentIndex]: !prev[currentIndex]
-      }));
+      setYoutubeMutedStates(prev => {
+        const newState = {
+          ...prev,
+          [currentIndex]: !prev[currentIndex]
+        };
+        console.log('YouTube mute toggle:', newState[currentIndex]);
+        return newState;
+      });
     } else {
-      setVideoMutedStates(prev => ({
-        ...prev,
-        [currentIndex]: !prev[currentIndex]
-      }));
+      setVideoMutedStates(prev => {
+        const newState = {
+          ...prev,
+          [currentIndex]: !prev[currentIndex]
+        };
+        console.log('Regular video mute toggle:', newState[currentIndex]);
+        return newState;
+      });
     }
   }, [properties, currentIndex]);
 
@@ -303,6 +324,10 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
           onSave={handleSave}
           onContactAgent={handleContactAgent}
           onShare={handleShare}
+          isMuted={isYouTubeUrl(properties[currentIndex]?.videoUrl) ? 
+            youtubeMutedStates[currentIndex] ?? false : 
+            videoMutedStates[currentIndex] ?? false}
+          onMuteToggle={handleMuteToggle}
         />
       </Animated.View>
 

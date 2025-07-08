@@ -20,6 +20,8 @@ interface PropertyOverlayProps {
   onSave: () => void;
   onContactAgent: () => void;
   onShare: () => void;
+  isMuted: boolean;
+  onMuteToggle: () => void;
 }
 
 export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
@@ -28,6 +30,8 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
   onSave,
   onContactAgent,
   onShare,
+  isMuted,
+  onMuteToggle,
 }) => {
   // Local state for UI interactions
   const [isLiked, setIsLiked] = useState(property.isLiked || false);
@@ -36,6 +40,7 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
   const [propertyDetailsVisible, setPropertyDetailsVisible] = useState(false);
+  const [showPropertyInfo, setShowPropertyInfo] = useState(true);
 
   const formatPrice = (price: number, listingType: string) => {
     if (listingType === 'rent') {
@@ -108,10 +113,28 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
     setPropertyDetailsVisible(true);
   };
 
+  const togglePropertyInfo = () => {
+    setShowPropertyInfo(!showPropertyInfo);
+  };
+
   return (
     <>
       {/* Action buttons on the right */}
       <View style={styles.actionButtons}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => {
+          console.log('Sound button pressed, current muted state:', isMuted);
+          onMuteToggle();
+        }}>
+          <Ionicons
+            name={isMuted ? 'volume-mute' : 'volume-high'}
+            size={32}
+            color="#fff"
+          />
+          <Text style={styles.actionButtonText}>
+            {isMuted ? 'Muted' : 'Sound'}
+          </Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
           <Ionicons
             name={isLiked ? 'heart' : 'heart-outline'}
@@ -148,10 +171,16 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
           <Ionicons name="list-outline" size={32} color="#fff" />
           <Text style={styles.actionButtonText}>Details</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={togglePropertyInfo}>
+          <Ionicons name={showPropertyInfo ? 'eye-off-outline' : 'eye-outline'} size={32} color="#fff" />
+          <Text style={styles.actionButtonText}>{showPropertyInfo ? 'Hide' : 'Show'}</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Property information at the bottom */}
-      <View style={styles.propertyInfo}>
+      {showPropertyInfo && (
+        <View style={styles.propertyInfo}>
         <ScrollView 
           showsVerticalScrollIndicator={false}
           style={styles.scrollView}
@@ -252,7 +281,8 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
             </View>
           )}
         </ScrollView>
-      </View>
+        </View>
+      )}
 
       {/* Contact Agent Modal */}
       <Modal
@@ -538,15 +568,15 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const styles = StyleSheet.create({
   actionButtons: {
     position: 'absolute',
-    right: 20,
-    bottom: 280, // Move up to avoid tab bar
+    right: 15, // Back to right edge since sound button is now here
+    bottom: 110, // Position at bottom right, above tab bar
     alignItems: 'center',
     zIndex: 10, // Higher than video controls to ensure buttons are clickable
   },
   actionButton: {
     alignItems: 'center',
-    marginBottom: 20,
-    padding: 10,
+    marginBottom: 12, // Reduced spacing between buttons
+    padding: 8, // Reduced padding for more compact feel
   },
   actionButtonText: {
     color: '#fff',

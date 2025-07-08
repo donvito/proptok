@@ -77,6 +77,15 @@ const YouTubePlayerComponent: React.FC<YouTubePlayerProps> = ({
     }
   }, [isPlaying, videoInfo]);
 
+  // Handle mute/unmute commands via WebView messages
+  useEffect(() => {
+    if (webViewRef.current && videoInfo) {
+      const action = muted ? 'mute' : 'unmute';
+      console.log('YouTube player sending mute command:', action, 'muted prop:', muted);
+      webViewRef.current.postMessage(JSON.stringify({ action }));
+    }
+  }, [muted, videoInfo]);
+
   // Cleanup effect to pause video when component unmounts
   useEffect(() => {
     const webView = webViewRef.current;
