@@ -51,7 +51,7 @@ export const getYouTubeVideoInfo = (url: string): YouTubeVideoInfo | null => {
 
 export const getYouTubeEmbedHtml = (videoId: string, isShorts: boolean = false, muted: boolean = false, shouldPlay: boolean = false): string => {
   const autoplayParam = shouldPlay ? 1 : 0;
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${autoplayParam}&mute=${muted ? 1 : 0}&controls=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&loop=1&playlist=${videoId}`;
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${autoplayParam}&mute=${muted ? 1 : 0}&controls=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&loop=1&playlist=${videoId}`;
   
   return `
     <!DOCTYPE html>
@@ -221,7 +221,7 @@ export const getYouTubeEmbedHtml = (videoId: string, isShorts: boolean = false, 
           // Message handler for communication with React Native
           window.addEventListener('message', function(event) {
             if (player && isReady) {
-              const data = event.data;
+              const data = JSON.parse(event.data);
               if (data.action === 'play') {
                 player.playVideo();
               } else if (data.action === 'pause') {
@@ -230,9 +230,39 @@ export const getYouTubeEmbedHtml = (videoId: string, isShorts: boolean = false, 
                 player.mute();
               } else if (data.action === 'unmute') {
                 player.unMute();
+              } else if (data.action === 'seek') {
+                player.seekTo(data.time, true);
+              } else if (data.action === 'getDuration') {
+                const duration = player.getDuration();
+                const currentTime = player.getCurrentTime();
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'timeUpdate',
+                  duration: duration,
+                  currentTime: currentTime
+                }));
               }
             }
           });
+          
+          // Send time updates periodically
+          setInterval(function() {
+            if (player && isReady && typeof player.getCurrentTime === 'function') {
+              try {
+                const duration = player.getDuration() || 0;
+                const currentTime = player.getCurrentTime() || 0;
+                const playerState = player.getPlayerState();
+                
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'timeUpdate',
+                  duration: duration,
+                  currentTime: currentTime,
+                  isPlaying: playerState === 1
+                }));
+              } catch (error) {
+                // Ignore errors
+              }
+            }
+          }, 1000);
         </script>
       </body>
     </html>

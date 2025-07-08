@@ -13,6 +13,7 @@ import { Property } from '../types/Property';
 import { PropertyOverlay } from './PropertyOverlay';
 import { YouTubePlayer } from './YouTubePlayer';
 import { SearchHeader } from './SearchHeader';
+import { VideoControls } from './VideoControls';
 import { isYouTubeUrl } from '../utils/youtube';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -42,6 +43,9 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
   const videoRefs = useRef<(Video | null)[]>([]);
   const [youtubePlayingStates, setYoutubePlayingStates] = useState<{ [key: number]: boolean }>({});
   const [youtubeMutedStates, setYoutubeMutedStates] = useState<{ [key: number]: boolean }>({});
+  const [videoMutedStates, setVideoMutedStates] = useState<{ [key: number]: boolean }>({});
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
 
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_, gestureState) => {
@@ -145,10 +149,24 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
   };
 
   const handleMuteToggle = () => {
-    setYoutubeMutedStates(prev => ({
-      ...prev,
-      [currentIndex]: !prev[currentIndex]
-    }));
+    if (isYouTubeUrl(properties[currentIndex].videoUrl)) {
+      setYoutubeMutedStates(prev => ({
+        ...prev,
+        [currentIndex]: !prev[currentIndex]
+      }));
+    } else {
+      setVideoMutedStates(prev => ({
+        ...prev,
+        [currentIndex]: !prev[currentIndex]
+      }));
+    }
+  };
+
+  const handleVideoSeek = (time: number) => {
+    const currentVideo = videoRefs.current[currentIndex];
+    if (currentVideo) {
+      currentVideo.setPositionAsync(time * 1000); // Convert to milliseconds
+    }
   };
 
   if (properties.length === 0) {
@@ -184,21 +202,45 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
             shouldAutoPlay={youtubePlayingStates[currentIndex] ?? false}
             muted={youtubeMutedStates[currentIndex] ?? false}
             onMuteToggle={handleMuteToggle}
+            onPlayPause={() => {
+              setIsPlaying(!isPlaying);
+            }}
             style={styles.video}
             onLoad={() => setIsPlaying(true)}
             onError={(error) => console.error('YouTube video error:', error)}
           />
         ) : (
-          <Video
-            ref={(ref) => (videoRefs.current[currentIndex] = ref)}
-            style={styles.video}
-            source={{ uri: properties[currentIndex].videoUrl }}
-            resizeMode={ResizeMode.COVER}
-            isLooping
-            shouldPlay={isPlaying}
-            onLoad={() => setIsPlaying(true)}
-            onError={(error) => console.error('Video error:', error)}
-          />
+          <>
+            <Video
+              ref={(ref) => {
+                videoRefs.current[currentIndex] = ref;
+              }}
+              style={styles.video}
+              source={{ uri: properties[currentIndex].videoUrl }}
+              resizeMode={ResizeMode.COVER}
+              isLooping
+              shouldPlay={isPlaying}
+              isMuted={videoMutedStates[currentIndex] ?? false}
+              onLoad={() => setIsPlaying(true)}
+              onError={(error) => console.error('Video error:', error)}
+              onPlaybackStatusUpdate={(status) => {
+                if (status.isLoaded) {
+                  setVideoDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
+                  setVideoCurrentTime(status.positionMillis ? status.positionMillis / 1000 : 0);
+                }
+              }}
+            />
+            <VideoControls
+              duration={videoDuration}
+              currentTime={videoCurrentTime}
+              isPlaying={isPlaying}
+              isMuted={videoMutedStates[currentIndex] ?? false}
+              onSeek={handleVideoSeek}
+              onPlayPause={() => setIsPlaying(!isPlaying)}
+              onMuteToggle={handleMuteToggle}
+              isYouTube={false}
+            />
+          </>
         )}
         
 

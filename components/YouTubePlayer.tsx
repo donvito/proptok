@@ -8,6 +8,7 @@ import {
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { getYouTubeVideoInfo, getYouTubeEmbedHtml } from '../utils/youtube';
+import { VideoControls } from './VideoControls';
 
 
 interface YouTubePlayerProps {
@@ -18,6 +19,7 @@ interface YouTubePlayerProps {
   onLoad?: () => void;
   onError?: (error: any) => void;
   onMuteToggle?: () => void;
+  onPlayPause?: () => void;
   style?: any;
 }
 
@@ -29,12 +31,16 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   onLoad,
   onError,
   onMuteToggle,
+  onPlayPause,
   style,
 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [videoInfo, setVideoInfo] = useState<any>(null);
   const [webViewKey, setWebViewKey] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [internalIsPlaying, setInternalIsPlaying] = useState(false);
 
   useEffect(() => {
     const info = getYouTubeVideoInfo(url);
@@ -50,6 +56,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   useEffect(() => {
     if (videoInfo && shouldAutoPlay !== undefined) {
       setWebViewKey(prev => prev + 1);
+      setInternalIsPlaying(shouldAutoPlay);
     }
   }, [shouldAutoPlay, videoInfo, muted]);
 
@@ -60,6 +67,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     if (webViewRef.current && videoInfo) {
       const action = isPlaying ? 'play' : 'pause';
       webViewRef.current.postMessage(JSON.stringify({ action }));
+      setInternalIsPlaying(isPlaying);
     }
   }, [isPlaying, videoInfo]);
 
@@ -86,6 +94,24 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     setError(false);
     setLoading(true);
     setWebViewKey(prev => prev + 1);
+  };
+
+  const handleSeek = (time: number) => {
+    if (webViewRef.current) {
+      webViewRef.current.postMessage(JSON.stringify({ 
+        action: 'seek', 
+        time: time 
+      }));
+    }
+  };
+
+  const handlePlayPause = () => {
+    if (webViewRef.current) {
+      const action = internalIsPlaying ? 'pause' : 'play';
+      webViewRef.current.postMessage(JSON.stringify({ action }));
+      setInternalIsPlaying(!internalIsPlaying);
+      onPlayPause?.();
+    }
   };
 
   if (error) {
@@ -117,17 +143,6 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         </View>
       )}
       
-      {/* Audio Toggle Button */}
-      {onMuteToggle && (
-        <TouchableOpacity style={styles.audioButton} onPress={onMuteToggle}>
-          <Ionicons
-            name={muted ? 'volume-mute' : 'volume-high'}
-            size={24}
-            color="#fff"
-          />
-        </TouchableOpacity>
-      )}
-      
       <WebView
         ref={webViewRef}
         key={webViewKey}
@@ -136,10 +151,13 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         onLoad={handleWebViewLoad}
         onError={handleWebViewError}
         onMessage={(event) => {
-          // Handle messages from YouTube player if needed
           try {
             const data = JSON.parse(event.nativeEvent.data);
-            console.log('YouTube player message:', data);
+            if (data.type === 'timeUpdate') {
+              setDuration(data.duration || 0);
+              setCurrentTime(data.currentTime || 0);
+              setInternalIsPlaying(data.isPlaying || false);
+            }
           } catch {
             // Ignore non-JSON messages
           }
@@ -162,6 +180,17 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         allowsFullscreenVideo={false}
         cacheEnabled={true}
         userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
+      />
+      
+      <VideoControls
+        duration={duration}
+        currentTime={currentTime}
+        isPlaying={internalIsPlaying}
+        isMuted={muted}
+        onSeek={handleSeek}
+        onPlayPause={handlePlayPause}
+        onMuteToggle={onMuteToggle || (() => {})}
+        isYouTube={true}
       />
     </View>
   );
@@ -200,14 +229,5 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 25,
-  },
-  audioButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 25,
-    padding: 12,
-    zIndex: 2,
   },
 });
