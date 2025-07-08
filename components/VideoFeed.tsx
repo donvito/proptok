@@ -165,13 +165,36 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
   // Handle tab focus/blur - pause videos when navigating away from video feed tab
   useFocusEffect(
     useCallback(() => {
-      console.log('VideoFeed tab focused - videos can play');
+      console.log('VideoFeed tab focused - auto-playing current video');
+      
+      // Auto-play the current video when tab gains focus
+      setTimeout(() => {
+        if (isYouTubeUrl(properties[currentIndex]?.videoUrl)) {
+          // For YouTube videos, set playing state to true
+          setYoutubePlayingStates(prev => ({
+            ...prev,
+            [currentIndex]: true
+          }));
+          setIsPlaying(true);
+        } else {
+          // For regular videos, play the current video
+          const currentVideo = videoRefs.current[currentIndex];
+          if (currentVideo) {
+            try {
+              currentVideo.playAsync();
+              setIsPlaying(true);
+            } catch (error) {
+              console.log('Error auto-playing video:', error);
+            }
+          }
+        }
+      }, 200); // Small delay to ensure component is ready
       
       return () => {
         console.log('VideoFeed tab blurred - pausing all videos');
         pauseAllVideos();
       };
-    }, [pauseAllVideos])
+    }, [pauseAllVideos, properties, currentIndex])
   );
 
   // Initialize muted states for YouTube videos
