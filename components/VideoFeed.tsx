@@ -46,6 +46,26 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
 
+  // Helper function to pause current video before switching
+  const pauseCurrentVideo = useCallback(() => {
+    if (isYouTubeUrl(properties[currentIndex]?.videoUrl)) {
+      // For YouTube videos, set playing state to false immediately
+      setYoutubePlayingStates(prev => ({
+        ...prev,
+        [currentIndex]: false
+      }));
+      // Also try to pause directly if possible
+      setIsPlaying(false);
+    } else {
+      // For regular videos, pause directly
+      const currentVideo = videoRefs.current[currentIndex];
+      if (currentVideo) {
+        currentVideo.pauseAsync();
+      }
+      setIsPlaying(false);
+    }
+  }, [properties, currentIndex]);
+
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_, gestureState) => {
       return Math.abs(gestureState.dy) > 20;
@@ -61,23 +81,31 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
       
       if (gestureState.dy > threshold && currentIndex > 0) {
         // Swipe down - previous video
+        pauseCurrentVideo(); // Pause current video first
         Animated.timing(translateY, {
           toValue: SCREEN_HEIGHT,
           duration: 300,
           useNativeDriver: true,
         }).start(() => {
-          setCurrentIndex(currentIndex - 1);
-          translateY.setValue(0);
+          // Small delay to ensure pause command is processed
+          setTimeout(() => {
+            setCurrentIndex(currentIndex - 1);
+            translateY.setValue(0);
+          }, 50);
         });
       } else if (gestureState.dy < -threshold && currentIndex < properties.length - 1) {
         // Swipe up - next video
+        pauseCurrentVideo(); // Pause current video first
         Animated.timing(translateY, {
           toValue: -SCREEN_HEIGHT,
           duration: 300,
           useNativeDriver: true,
         }).start(() => {
-          setCurrentIndex(currentIndex + 1);
-          translateY.setValue(0);
+          // Small delay to ensure pause command is processed
+          setTimeout(() => {
+            setCurrentIndex(currentIndex + 1);
+            translateY.setValue(0);
+          }, 50);
         });
       } else {
         // Snap back

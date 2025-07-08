@@ -77,6 +77,16 @@ const YouTubePlayerComponent: React.FC<YouTubePlayerProps> = ({
     }
   }, [isPlaying, videoInfo]);
 
+  // Cleanup effect to pause video when component unmounts
+  useEffect(() => {
+    const webView = webViewRef.current;
+    return () => {
+      if (webView) {
+        webView.postMessage(JSON.stringify({ action: 'pause' }));
+      }
+    };
+  }, []);
+
 
   const handleWebViewLoad = () => {
     setLoading(false);
