@@ -10,6 +10,7 @@ import {
   View
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { Property } from '../types/Property';
 import { isYouTubeUrl } from '../utils/youtube';
 import { PropertyOverlay } from './PropertyOverlay';
@@ -160,6 +161,18 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
       pauseAllVideos();
     };
   }, [pauseAllVideos]);
+
+  // Handle tab focus/blur - pause videos when navigating away from video feed tab
+  useFocusEffect(
+    useCallback(() => {
+      console.log('VideoFeed tab focused - videos can play');
+      
+      return () => {
+        console.log('VideoFeed tab blurred - pausing all videos');
+        pauseAllVideos();
+      };
+    }, [pauseAllVideos])
+  );
 
   // Initialize muted states for YouTube videos
   useEffect(() => {

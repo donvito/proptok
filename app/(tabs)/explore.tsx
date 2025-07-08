@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { useFocusEffect } from '@react-navigation/native';
 import { PropertyFilters } from '@/components/PropertyFilters';
 import { VideoFeed } from '@/components/VideoFeed';
 import { mockProperties } from '@/data/mockProperties';
@@ -78,17 +79,17 @@ export default function SearchScreen() {
   };
 
   const getVideoThumbnail = (property: Property) => {
-    // If property has thumbnailUrl, use it
-    if (property.thumbnailUrl) {
-      return property.thumbnailUrl;
-    }
-    
-    // If it's a YouTube video, get the thumbnail
+    // Prioritize YouTube video thumbnails first
     if (isYouTubeUrl(property.videoUrl)) {
       const videoInfo = getYouTubeVideoInfo(property.videoUrl);
       if (videoInfo) {
         return videoInfo.thumbnailUrl;
       }
+    }
+    
+    // Fallback to property thumbnailUrl if available
+    if (property.thumbnailUrl) {
+      return property.thumbnailUrl;
     }
     
     // Default placeholder image
@@ -104,6 +105,21 @@ export default function SearchScreen() {
     setShowVideoModal(false);
     setSelectedProperty(null);
   };
+
+  // Handle tab focus/blur - close video modal when navigating away from search tab
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Search tab focused');
+      
+      return () => {
+        console.log('Search tab blurred - closing video modal if open');
+        if (showVideoModal) {
+          setShowVideoModal(false);
+          setSelectedProperty(null);
+        }
+      };
+    }, [showVideoModal])
+  );
 
   const renderPropertyItem = ({ item }: { item: Property }) => (
     <TouchableOpacity 
