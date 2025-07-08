@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -129,26 +129,26 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
   }, [properties]);
 
 
-  const handleLike = () => {
+  const handleLike = useCallback(() => {
     const property = properties[currentIndex];
     onPropertyLike?.(property.id);
-  };
+  }, [properties, currentIndex, onPropertyLike]);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     const property = properties[currentIndex];
     onPropertySave?.(property.id);
-  };
+  }, [properties, currentIndex, onPropertySave]);
 
-  const handleContactAgent = () => {
+  const handleContactAgent = useCallback(() => {
     const property = properties[currentIndex];
     onContactAgent?.(property);
-  };
+  }, [properties, currentIndex, onContactAgent]);
 
-  const handleShare = () => {
+  const handleShare = useCallback(() => {
     Alert.alert('Share Property', 'Share functionality would be implemented here');
-  };
+  }, []);
 
-  const handleMuteToggle = () => {
+  const handleMuteToggle = useCallback(() => {
     if (isYouTubeUrl(properties[currentIndex].videoUrl)) {
       setYoutubeMutedStates(prev => ({
         ...prev,
@@ -160,14 +160,47 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
         [currentIndex]: !prev[currentIndex]
       }));
     }
-  };
+  }, [properties, currentIndex]);
 
-  const handleVideoSeek = (time: number) => {
+  const handleVideoSeek = useCallback((time: number) => {
     const currentVideo = videoRefs.current[currentIndex];
     if (currentVideo) {
       currentVideo.setPositionAsync(time * 1000); // Convert to milliseconds
     }
-  };
+  }, [currentIndex]);
+
+  // Stable callback functions for YouTubePlayer to prevent unnecessary re-renders
+  const handleYouTubePlayPause = useCallback(() => {
+    setIsPlaying(!isPlaying);
+  }, [isPlaying]);
+
+  const handleYouTubeLoad = useCallback(() => {
+    setIsPlaying(true);
+  }, []);
+
+  const handleYouTubeError = useCallback((error: any) => {
+    console.error('YouTube video error:', error);
+  }, []);
+
+  // Stable callback functions for regular Video component
+  const handleVideoLoad = useCallback(() => {
+    setIsPlaying(true);
+  }, []);
+
+  const handleVideoError = useCallback((error: any) => {
+    console.error('Video error:', error);
+  }, []);
+
+  const handleVideoPlayPause = useCallback(() => {
+    setIsPlaying(!isPlaying);
+  }, [isPlaying]);
+
+  const handleVideoPlaybackStatusUpdate = useCallback((status: any) => {
+    if (status.isLoaded) {
+      setVideoDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
+      setVideoCurrentTime(status.positionMillis ? status.positionMillis / 1000 : 0);
+    }
+  }, []);
 
   if (properties.length === 0) {
     return (
@@ -202,12 +235,10 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
             shouldAutoPlay={youtubePlayingStates[currentIndex] ?? false}
             muted={youtubeMutedStates[currentIndex] ?? false}
             onMuteToggle={handleMuteToggle}
-            onPlayPause={() => {
-              setIsPlaying(!isPlaying);
-            }}
+            onPlayPause={handleYouTubePlayPause}
             style={styles.video}
-            onLoad={() => setIsPlaying(true)}
-            onError={(error) => console.error('YouTube video error:', error)}
+            onLoad={handleYouTubeLoad}
+            onError={handleYouTubeError}
           />
         ) : (
           <>
@@ -221,14 +252,9 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
               isLooping
               shouldPlay={isPlaying}
               isMuted={videoMutedStates[currentIndex] ?? false}
-              onLoad={() => setIsPlaying(true)}
-              onError={(error) => console.error('Video error:', error)}
-              onPlaybackStatusUpdate={(status) => {
-                if (status.isLoaded) {
-                  setVideoDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
-                  setVideoCurrentTime(status.positionMillis ? status.positionMillis / 1000 : 0);
-                }
-              }}
+              onLoad={handleVideoLoad}
+              onError={handleVideoError}
+              onPlaybackStatusUpdate={handleVideoPlaybackStatusUpdate}
             />
             <VideoControls
               duration={videoDuration}
@@ -236,7 +262,7 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
               isPlaying={isPlaying}
               isMuted={videoMutedStates[currentIndex] ?? false}
               onSeek={handleVideoSeek}
-              onPlayPause={() => setIsPlaying(!isPlaying)}
+              onPlayPause={handleVideoPlayPause}
               onMuteToggle={handleMuteToggle}
               isYouTube={false}
             />

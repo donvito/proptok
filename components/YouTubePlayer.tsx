@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import {
   View,
   StyleSheet,
@@ -23,7 +23,7 @@ interface YouTubePlayerProps {
   style?: any;
 }
 
-export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
+const YouTubePlayerComponent: React.FC<YouTubePlayerProps> = ({
   url,
   isPlaying,
   muted = false,
@@ -54,11 +54,17 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   }, [url, onError]);
 
   useEffect(() => {
-    if (videoInfo && shouldAutoPlay !== undefined) {
-      setWebViewKey(prev => prev + 1);
-      setInternalIsPlaying(shouldAutoPlay);
+    if (videoInfo) {
+      setInternalIsPlaying(shouldAutoPlay || false);
     }
-  }, [shouldAutoPlay, videoInfo, muted]);
+  }, [videoInfo, shouldAutoPlay]);
+
+  // Only reload WebView when URL/video changes
+  useEffect(() => {
+    if (videoInfo) {
+      setWebViewKey(prev => prev + 1);
+    }
+  }, [videoInfo]);
 
   // Handle play/pause commands via WebView messages
   const webViewRef = useRef<any>(null);
@@ -71,16 +77,18 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     }
   }, [isPlaying, videoInfo]);
 
-  useEffect(() => {
-    if (webViewRef.current && videoInfo) {
-      const action = muted ? 'mute' : 'unmute';
-      webViewRef.current.postMessage(JSON.stringify({ action }));
-    }
-  }, [muted, videoInfo]);
 
   const handleWebViewLoad = () => {
     setLoading(false);
     onLoad?.();
+    
+    // Initialize video state after load
+    setTimeout(() => {
+      if (webViewRef.current && shouldAutoPlay) {
+        webViewRef.current.postMessage(JSON.stringify({ action: 'play' }));
+        setInternalIsPlaying(true);
+      }
+    }, 1000); // Give the YouTube API time to initialize
   };
 
   const handleWebViewError = (syntheticEvent: any) => {
@@ -114,6 +122,14 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     }
   };
 
+  const handleMuteToggle = () => {
+    if (webViewRef.current) {
+      const action = muted ? 'unmute' : 'mute';
+      webViewRef.current.postMessage(JSON.stringify({ action }));
+      onMuteToggle?.();
+    }
+  };
+
   if (error) {
     return (
       <View style={[styles.container, style, styles.errorContainer]}>
@@ -133,7 +149,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     );
   }
 
-  const htmlContent = getYouTubeEmbedHtml(videoInfo.videoId, videoInfo.isShorts, muted, shouldAutoPlay);
+  const htmlContent = getYouTubeEmbedHtml(videoInfo.videoId, videoInfo.isShorts, false, false);
 
   return (
     <View style={[styles.container, style]}>
@@ -189,7 +205,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         isMuted={muted}
         onSeek={handleSeek}
         onPlayPause={handlePlayPause}
-        onMuteToggle={onMuteToggle || (() => {})}
+        onMuteToggle={handleMuteToggle}
         isYouTube={true}
       />
     </View>
@@ -230,4 +246,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 25,
   },
+});
+
+// Memoized component to prevent unnecessary re-renders
+export const YouTubePlayer = memo(YouTubePlayerComponent, (prevProps, nextProps) => {
+  // Only re-render if these critical props change
+  return (
+    prevProps.url === nextProps.url &&
+    prevProps.isPlaying === nextProps.isPlaying &&
+    prevProps.muted === nextProps.muted &&
+    prevProps.shouldAutoPlay === nextProps.shouldAutoPlay
+    // Don't include onMuteToggle, onPlayPause, onLoad, onError in comparison
+    // as they are now stable with useCallback
+  );
 });

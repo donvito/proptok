@@ -50,8 +50,8 @@ export const getYouTubeVideoInfo = (url: string): YouTubeVideoInfo | null => {
 };
 
 export const getYouTubeEmbedHtml = (videoId: string, isShorts: boolean = false, muted: boolean = false, shouldPlay: boolean = false): string => {
-  const autoplayParam = shouldPlay ? 1 : 0;
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${autoplayParam}&mute=${muted ? 1 : 0}&controls=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&loop=1&playlist=${videoId}`;
+  // Always start with autoplay=0 and mute=0 to prevent initial state conflicts
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&mute=0&controls=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&loop=1&playlist=${videoId}`;
   
   return `
     <!DOCTYPE html>
@@ -176,21 +176,28 @@ export const getYouTubeEmbedHtml = (videoId: string, isShorts: boolean = false, 
             isReady = true;
             document.getElementById('loading').style.display = 'none';
             
-            // Auto-play if needed
-            if (${shouldPlay}) {
-              event.target.playVideo();
-            }
-            
-            // Set volume based on mute state
-            if (${muted}) {
-              event.target.mute();
-            } else {
-              event.target.unMute();
-            }
+            // Let React Native control the initial state via messages
+            // Don't set any initial play/mute state here
           }
           
           function onPlayerStateChange(event) {
-            // Handle player state changes if needed
+            // Send state changes to React Native
+            if (typeof player.getCurrentTime === 'function') {
+              try {
+                const duration = player.getDuration() || 0;
+                const currentTime = player.getCurrentTime() || 0;
+                const playerState = event.data;
+                
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'timeUpdate',
+                  duration: duration,
+                  currentTime: currentTime,
+                  isPlaying: playerState === 1 // 1 = playing
+                }));
+              } catch (error) {
+                // Ignore errors
+              }
+            }
           }
           
           // Load YouTube API
@@ -220,26 +227,31 @@ export const getYouTubeEmbedHtml = (videoId: string, isShorts: boolean = false, 
           
           // Message handler for communication with React Native
           window.addEventListener('message', function(event) {
-            if (player && isReady) {
-              const data = JSON.parse(event.data);
-              if (data.action === 'play') {
-                player.playVideo();
-              } else if (data.action === 'pause') {
-                player.pauseVideo();
-              } else if (data.action === 'mute') {
-                player.mute();
-              } else if (data.action === 'unmute') {
-                player.unMute();
-              } else if (data.action === 'seek') {
-                player.seekTo(data.time, true);
-              } else if (data.action === 'getDuration') {
-                const duration = player.getDuration();
-                const currentTime = player.getCurrentTime();
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'timeUpdate',
-                  duration: duration,
-                  currentTime: currentTime
-                }));
+            if (player && isReady && typeof player.playVideo === 'function') {
+              try {
+                const data = JSON.parse(event.data);
+                if (data.action === 'play') {
+                  player.playVideo();
+                } else if (data.action === 'pause') {
+                  player.pauseVideo();
+                } else if (data.action === 'mute') {
+                  player.mute();
+                } else if (data.action === 'unmute') {
+                  player.unMute();
+                } else if (data.action === 'seek') {
+                  player.seekTo(data.time, true);
+                } else if (data.action === 'getDuration') {
+                  const duration = player.getDuration();
+                  const currentTime = player.getCurrentTime();
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'timeUpdate',
+                    duration: duration,
+                    currentTime: currentTime,
+                    isPlaying: player.getPlayerState() === 1
+                  }));
+                }
+              } catch (error) {
+                console.log('Message handling error:', error);
               }
             }
           });
