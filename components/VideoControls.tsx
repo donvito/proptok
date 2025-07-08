@@ -286,6 +286,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 200,
-    zIndex: 1,
+    zIndex: 5, // Ensure video tap area is above property info but below action buttons
   },
 });

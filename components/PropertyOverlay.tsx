@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,10 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  Modal,
+  Linking,
+  Alert,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Property } from '../types/Property';
@@ -25,6 +29,12 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
   onContactAgent,
   onShare,
 }) => {
+  // Local state for UI interactions
+  const [isLiked, setIsLiked] = useState(property.isLiked || false);
+  const [isSaved, setIsSaved] = useState(property.isSaved || false);
+  const [contactModalVisible, setContactModalVisible] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+
   const formatPrice = (price: number, listingType: string) => {
     if (listingType === 'rent') {
       return `$${price.toLocaleString()}/mo`;
@@ -36,34 +46,85 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
     return `${sqft.toLocaleString()} sq ft`;
   };
 
+  const handleLike = () => {
+    setIsLiked(!isLiked);
+    onLike();
+  };
+
+  const handleSave = () => {
+    setIsSaved(!isSaved);
+    onSave();
+  };
+
+  const handleContactAgent = () => {
+    setContactModalVisible(true);
+    onContactAgent();
+  };
+
+  const handleShare = () => {
+    setShareModalVisible(true);
+    onShare();
+  };
+
+  const handleCall = () => {
+    Linking.openURL(`tel:${property.agent.phone}`);
+    setContactModalVisible(false);
+  };
+
+  const handleEmail = () => {
+    Linking.openURL(`mailto:${property.agent.email}?subject=Inquiry about ${property.title}`);
+    setContactModalVisible(false);
+  };
+
+  const handleNativeShare = async () => {
+    try {
+      await Share.share({
+        message: `Check out this property: ${property.title} - ${formatPrice(property.price, property.listingType)} at ${property.address}, ${property.city}`,
+        url: property.videoUrl,
+      });
+    } catch {
+      Alert.alert('Error', 'Unable to share property');
+    }
+    setShareModalVisible(false);
+  };
+
+  const handleCopyLink = () => {
+    Alert.alert('Link Copied', 'Property link copied to clipboard');
+    setShareModalVisible(false);
+  };
+
   return (
-    <View style={styles.overlay}>
+    <>
       {/* Action buttons on the right */}
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.actionButton} onPress={onLike}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
           <Ionicons
-            name={property.isLiked ? 'heart' : 'heart-outline'}
+            name={isLiked ? 'heart' : 'heart-outline'}
             size={32}
-            color={property.isLiked ? '#ff4458' : '#fff'}
+            color={isLiked ? '#ff4458' : '#fff'}
           />
-          <Text style={styles.actionButtonText}>Like</Text>
+          <Text style={styles.actionButtonText}>
+            {isLiked ? 'Liked' : 'Like'}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={onSave}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
           <Ionicons
-            name={property.isSaved ? 'bookmark' : 'bookmark-outline'}
+            name={isSaved ? 'bookmark' : 'bookmark-outline'}
             size={32}
-            color={property.isSaved ? '#ffd700' : '#fff'}
+            color={isSaved ? '#ffd700' : '#fff'}
           />
-          <Text style={styles.actionButtonText}>Save</Text>
+          <Text style={styles.actionButtonText}>
+            {isSaved ? 'Saved' : 'Save'}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={onContactAgent}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleContactAgent}>
           <Ionicons name="call" size={32} color="#fff" />
           <Text style={styles.actionButtonText}>Contact</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={onShare}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
           <Ionicons name="share-outline" size={32} color="#fff" />
           <Text style={styles.actionButtonText}>Share</Text>
         </TouchableOpacity>
@@ -71,7 +132,10 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
 
       {/* Property information at the bottom */}
       <View style={styles.propertyInfo}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          style={styles.scrollView}
+        >
           {/* Price and basic info */}
           <View style={styles.priceSection}>
             <Text style={styles.price}>
@@ -152,24 +216,116 @@ export const PropertyOverlay: React.FC<PropertyOverlayProps> = ({
           )}
         </ScrollView>
       </View>
-    </View>
+
+      {/* Contact Agent Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={contactModalVisible}
+        onRequestClose={() => setContactModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Contact Agent</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setContactModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.agentModalSection}>
+              <Image
+                source={{ uri: property.agent.photo }}
+                style={styles.agentModalPhoto}
+              />
+              <View style={styles.agentModalInfo}>
+                <Text style={styles.agentModalName}>{property.agent.name}</Text>
+                <Text style={styles.agentModalCompany}>{property.agent.company}</Text>
+              </View>
+            </View>
+
+            <View style={styles.contactOptions}>
+              <TouchableOpacity style={styles.contactOption} onPress={handleCall}>
+                <Ionicons name="call" size={24} color="#007AFF" />
+                <Text style={styles.contactOptionText}>Call {property.agent.phone}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.contactOption} onPress={handleEmail}>
+                <Ionicons name="mail" size={24} color="#007AFF" />
+                <Text style={styles.contactOptionText}>Email {property.agent.email}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.propertyModalInfo}>
+              <Text style={styles.propertyModalTitle}>{property.title}</Text>
+              <Text style={styles.propertyModalPrice}>
+                {formatPrice(property.price, property.listingType)}
+              </Text>
+              <Text style={styles.propertyModalAddress}>
+                {property.address}, {property.city}, {property.state}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Share Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={shareModalVisible}
+        onRequestClose={() => setShareModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Share Property</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShareModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.shareOptions}>
+              <TouchableOpacity style={styles.shareOption} onPress={handleNativeShare}>
+                <Ionicons name="share" size={24} color="#007AFF" />
+                <Text style={styles.shareOptionText}>Share via...</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.shareOption} onPress={handleCopyLink}>
+                <Ionicons name="link" size={24} color="#007AFF" />
+                <Text style={styles.shareOptionText}>Copy Link</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.sharePreview}>
+              <Text style={styles.sharePreviewTitle}>{property.title}</Text>
+              <Text style={styles.sharePreviewPrice}>
+                {formatPrice(property.price, property.listingType)}
+              </Text>
+              <Text style={styles.sharePreviewAddress}>
+                {property.address}, {property.city}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
   actionButtons: {
     position: 'absolute',
     right: 20,
     bottom: 280, // Move up to avoid tab bar
     alignItems: 'center',
+    zIndex: 10, // Higher than video controls to ensure buttons are clickable
   },
   actionButton: {
     alignItems: 'center',
@@ -191,6 +347,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     padding: 20,
     paddingBottom: 20,
+    zIndex: 2, // Lower than video controls but visible
+    pointerEvents: 'none', // Allow taps to pass through to video controls
   },
   priceSection: {
     flexDirection: 'row',
@@ -292,5 +450,143 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 12,
     fontStyle: 'italic',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  // Agent modal styles
+  agentModalSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    padding: 15,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+  },
+  agentModalPhoto: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 15,
+  },
+  agentModalInfo: {
+    flex: 1,
+  },
+  agentModalName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  agentModalCompany: {
+    fontSize: 14,
+    color: '#666',
+  },
+  contactOptions: {
+    marginBottom: 20,
+  },
+  contactOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  contactOptionText: {
+    fontSize: 16,
+    color: '#007AFF',
+    marginLeft: 10,
+    fontWeight: '500',
+  },
+  propertyModalInfo: {
+    padding: 15,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+  },
+  propertyModalTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  propertyModalPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    marginBottom: 5,
+  },
+  propertyModalAddress: {
+    fontSize: 14,
+    color: '#666',
+  },
+  // Share modal styles
+  shareOptions: {
+    marginBottom: 20,
+  },
+  shareOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  shareOptionText: {
+    fontSize: 16,
+    color: '#007AFF',
+    marginLeft: 10,
+    fontWeight: '500',
+  },
+  sharePreview: {
+    padding: 15,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+  },
+  sharePreviewTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  sharePreviewPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    marginBottom: 5,
+  },
+  sharePreviewAddress: {
+    fontSize: 14,
+    color: '#666',
+  },
+  scrollView: {
+    pointerEvents: 'auto', // Re-enable pointer events for scrollable content
   },
 });
